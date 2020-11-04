@@ -18,6 +18,7 @@ sphereCollideDeformer::~sphereCollideDeformer() {
 
 }
 
+//创建Node的时候使用
 MObject& sphereCollideDeformer::accessoryAttribute() const {
 
 	return aCollideMatrix;
@@ -34,11 +35,15 @@ MStatus sphereCollideDeformer::deform(MDataBlock& data,MItGeometry& itGeo, const
 
 	MPoint point;
 	for (; !itGeo.isDone(); itGeo.next())
-	{
+	{	
+		//获取Local position
 		point = itGeo.position();
-		//
+		//化物体坐标为世界坐标
 		point *= localtoWorldMatrix;
+		//获取点经过Local相反位移后的坐标
 		point *= collideMatrixInverse;
+		/* 如果满足下方if语句。当point乘了一个Locator的逆矩阵，Point的坐标变成他的相反方向（可能），
+		极限距离不能超过小球的半径1（结合point *= collideMatrix理解）*/
 		if (MVector(point).length() < 1.0)
 		{
 			point = MVector(point).normal();
@@ -70,23 +75,23 @@ MStatus sphereCollideDeformer::initialize() {
 MStatus sphereCollideDeformer::accessoryNodeSetup(MDagModifier& dagMod) {
 
 	MStatus status;
-	//����Locator(����shape)
+	//创建Locator(包含shape)
 	MObject oLocator = dagMod.createNode("locator", MObject::kNullObj, &status);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
-	//����DG�ڵ㣨Locator��
+	//创建DG节点（Locator）
 	MFnDependencyNode fnLocator(oLocator, &status);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
-	//����Locator�ڵ��е�worldMatrix MPlug
+	//返回Locator节点中的worldMatrix MPlug
 	MPlug plugWorldMatrix = fnLocator.findPlug("worldMatrix", false, &status);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
-	//����worldMatrix����еĵ�һ��Mplug(worldMatrix[0])
+	//进入worldMatrix组件中的第一个Mplug(worldMatrix[0])
 	status = plugWorldMatrix.selectAncestorLogicalIndex(0, plugWorldMatrix.attribute());
 	CHECK_MSTATUS_AND_RETURN_IT(status);
-	//���ر��ڵ�(sphereCollide)
+	//返回本节点(sphereCollide)
 	MObject oThis = thisMObject();
-	//���ر��ڵ��е�collideMatrix����
+	//返回本节点中的collideMatrix属性
 	MPlug plugCollideMatrix(oThis, aCollideMatrix);
-	//����worldMatrix[0]��collideMatrix
+	//连接worldMatrix[0]和collideMatrix
 	status = dagMod.connect(plugWorldMatrix, plugCollideMatrix);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
